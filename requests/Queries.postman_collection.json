@@ -1,0 +1,136 @@
+{
+	"info": {
+		"_postman_id": "0ea23123-3ae8-4d5c-9cd1-73b1e244eda4",
+		"name": "Queries",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42897238",
+		"_collection_link": "https://www.postman.com/workspace/API-Workspace~de8f97d9-e531-44fa-a616-52acabf986a7/collection/42897238-0ea23123-3ae8-4d5c-9cd1-73b1e244eda4?action=share&source=collection_link&creator=42897238"
+	},
+	"item": [
+		{
+			"name": "RetrieveAll",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseURL}}/customers",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"customers"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"last_name\": \"Иванов\",\n  \"first_name\": \"Иван\",\n  \"patronymic\": \"Иванович\",\n  \"phone\": \"1\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/customers",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"customers"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Retrieve",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseURL}}/customers/1",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"customers",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"last_name\": \"Иванов New\",\n  \"first_name\": \"Иван New\",\n  \"patronymic\": \"Иванович New\",\n  \"phone\": \"20\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/customers/2",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"customers",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseURL}}/customers/8",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"customers",
+						"8"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseURL",
+			"value": "",
+			"type": "default"
+		}
+	]
+}

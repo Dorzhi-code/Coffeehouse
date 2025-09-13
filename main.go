@@ -1,94 +1,41 @@
 package main
 
 import (
-	crud "coffe/CRUD"
-	"database/sql"
-	"fmt"
+	databse "coffe/database"
+	"coffe/handler"
 	"log"
+	"net/http"
 
+	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func connect(db_path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", db_path)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка открытия базы: %w", err)
-	}
+type homeHandler struct{}
 
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("не удалось подключиться: %w", err)
-	}
-
-	return db, nil
-
+func (h *homeHandler) ServerHTTP(w http.ResponseWriter, r *http.Request){
+	w.Write([]byte("This is my home page"))
 }
 
-func main() {
-	db, err := connect("./db/coffee.db")
-	if err != nil {
+func main(){
+	db, err := databse.Connect("./database/coffee.db")
+	
+	if(err != nil){
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	var choice int = 1
-	for choice != 0 {
-		fmt.Println(`
-			0. Выход 
-			1. Добавить клиента
-			2. Получить данные всех клиентов
-			3. Получить данные клиента по идентификатору
-			4. Изменить данные клиента
-			5. Удалить данные клиента	
+	router := mux.NewRouter()
 
-			`)
-		fmt.Print("Ваш выбор: ")
-		fmt.Scanln(&choice)
+	customerHandler := handler.CustomerHandler{DB:db}
 
-		switch choice {
-		case 0:
-			fmt.Println("Выход из программы.")
-		case 1:
-			fmt.Println("Добавление клиента.")
-			var customer crud.Customer
+	home := homeHandler{}
+	
+	router.HandleFunc("/", home.ServerHTTP)
+	router.HandleFunc("/customers", customerHandler.Create).Methods("POST")
+	router.HandleFunc("/customers", customerHandler.RetrieveAll).Methods("GET")
+	router.HandleFunc("/customers/{id}", customerHandler.Retrieve).Methods("GET")
+	router.HandleFunc("/customers/{id}", customerHandler.Update).Methods("PUT")
+	router.HandleFunc("/customers/{id}", customerHandler.Delete).Methods("DELETE")
 
-			fmt.Print("Фамилия: ")
-			fmt.Scanln(&customer.LastName)
-
-			fmt.Print("Имя: ")
-			fmt.Scanln(&customer.FirstName)
-
-			fmt.Print("Отчество: ")
-			fmt.Scanln(&customer.Patronymic)
-
-			fmt.Print("Номер телефона: ")
-			fmt.Scanln(&customer.Phone)
-
-			if err := crud.Create(db, customer); err != nil {
-				log.Println("Ошибка: ", err)
-			} else {
-				fmt.Println("Запись успешно добавлена")
-			}
-		case 2:
-			fmt.Println("Список данные всех клиентов.")
-			customers, err := crud.RetrieveAll(db)
-
-			if err != nil {
-				log.Println(err)
-			}
-
-			for _, c := range customers {
-				fmt.Printf("%d: %s %s %s | %s\n", c.ID, c.LastName, c.FirstName, c.Patronymic, c.Phone)
-			}
-		case 3:
-			fmt.Println("Данные клиента по идентификатору.")
-		case 4:
-			fmt.Println("Изменить данные клиента.")
-		case 5:
-			fmt.Println("Удаление клиента.")
-		default:
-			fmt.Println("Некорректный ввод!")
-
-		}
-	}
-
+	http.ListenAndServe(":8010", router)
 }
