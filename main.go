@@ -29,13 +29,18 @@ func main(){
 	customerHandler := handler.CustomerHandler{DB:db}
 
 	home := homeHandler{}
-	
 	router.HandleFunc("/", home.ServerHTTP)
-	router.HandleFunc("/customers", customerHandler.Create).Methods("POST")
+	router.HandleFunc("/protected", handler.AuthMiddleware(handler.ProtectedHandler))
+	router.HandleFunc("/auth", handler.LogingHandler).Methods("POST")
+
+	router.HandleFunc("/customers", handler.AuthMiddleware(customerHandler.Create)).Methods("POST") // Защищенный
 	router.HandleFunc("/customers", customerHandler.RetrieveAll).Methods("GET")
 	router.HandleFunc("/customers/{id}", customerHandler.Retrieve).Methods("GET")
-	router.HandleFunc("/customers/{id}", customerHandler.Update).Methods("PUT")
-	router.HandleFunc("/customers/{id}", customerHandler.Delete).Methods("DELETE")
+	router.HandleFunc("/customers/{id}", handler.AuthMiddleware(customerHandler.Update)).Methods("PUT") // Защищенный
+	router.HandleFunc("/customers/{id}", handler.AuthMiddleware(customerHandler.Delete)).Methods("DELETE") // Защищенный
+	
 
 	http.ListenAndServe(":8010", router)
+
+
 }
