@@ -5,26 +5,28 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
 
 // Клиент кофейни
 type Customer struct {
-	ID         int	`json:"id"`
+	ID         int    `json:"id"`
 	LastName   string `json:"last_name"`
 	FirstName  string `json:"first_name"`
 	Patronymic string `json:"patronymic"`
 	Phone      string `json:"phone"`
 }
 
-type CustomerHandler struct{
+type CustomerHandler struct {
 	DB *sql.DB
 }
+
 // Добавление нового клиента
-func (h *CustomerHandler) Create (w http.ResponseWriter, r *http.Request){
+func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var c Customer
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil{
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -37,7 +39,7 @@ func (h *CustomerHandler) Create (w http.ResponseWriter, r *http.Request){
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}	
+	}
 	var id, _ = result.LastInsertId()
 	c.ID = int(id)
 
@@ -48,39 +50,70 @@ func (h *CustomerHandler) Create (w http.ResponseWriter, r *http.Request){
 }
 
 // Получение всех клиентов
-func (h *CustomerHandler)RetrieveAll (w http.ResponseWriter, r *http.Request){
-
+func (h *CustomerHandler) RetrieveAll(w http.ResponseWriter, r *http.Request) {
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+	sortByAttribute := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	filterAttribute := r.URL.Query().Get("attribute")
+	filterValue := r.URL.Query().Get("value")
 
 	query := `
         SELECT id, last_name, first_name, patronymic, phone FROM customers
     `
-	rows, err := h.DB.Query(query)
+	var args []interface{}
+	var conditions []string
+
+	if filterAttribute != "" && filterValue != "" {
+		conditions = append(conditions, filterAttribute+"= ?")
+		args = append(args, filterValue)
+	}
+
+	if search != "" {
+		like := "%" + search + "%"
+		conditions = append(conditions, "lower(last_name) LIKE ?  OR lower(first_name) LIKE ?  OR lower(patronymic) LIKE ?")
+
+		args = append(args, like, like, like)
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + conditions[0]
+		for i := 1; i < len(conditions); i++ {
+			query += " AND " + conditions[i]
+		}
+	}
+
+	if sortByAttribute != "" {
+		if order != "desk" {
+			order = "asc"
+		}
+		query += " ORDER BY " + sortByAttribute + " " + order
+	}
+	print("query: ", query)
+	rows, err := h.DB.Query(query, args...)
 	if err != nil {
-		http.Error(w,err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var customers []Customer
+	customers := make([]Customer, 0)
 
 	for rows.Next() {
 		var c Customer
-		if err := rows.Scan(&c.ID, &c.LastName, &c.FirstName, &c.Patronymic, &c.Phone); 
-		err != nil {
-			http.Error(w,err.Error(), http.StatusInternalServerError)
+		if err := rows.Scan(&c.ID, &c.LastName, &c.FirstName, &c.Patronymic, &c.Phone); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		customers = append(customers, c)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(customers)
-	
+
 }
 
 // Получение одного клиента по ID
-func (h *CustomerHandler) Retrieve (w http.ResponseWriter, r *http.Request){
+func (h *CustomerHandler) Retrieve(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 
 	query := `
@@ -91,7 +124,7 @@ func (h *CustomerHandler) Retrieve (w http.ResponseWriter, r *http.Request){
 	err := h.DB.QueryRow(query, id).Scan(&c.ID, &c.LastName, &c.FirstName, &c.Patronymic, &c.Phone)
 
 	if err != nil {
-		if err == sql.ErrNoRows{
+		if err == sql.ErrNoRows {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -104,11 +137,11 @@ func (h *CustomerHandler) Retrieve (w http.ResponseWriter, r *http.Request){
 }
 
 // Редактирование данных клиента
-func (h *CustomerHandler) Update (w http.ResponseWriter, r *http.Request) {
+func (h *CustomerHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 
 	var c Customer
-	if err := json.NewDecoder(r.Body).Decode(&c); err != nil{
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -119,14 +152,14 @@ func (h *CustomerHandler) Update (w http.ResponseWriter, r *http.Request) {
     `
 	result, err := h.DB.Exec(query, c.LastName, c.FirstName, c.Patronymic, c.Phone, id)
 	if err != nil {
-		
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	rows, _ := result.RowsAffected()
-	
-	if rows == 0{
+
+	if rows == 0 {
 		http.Error(w, "customer not found", http.StatusNotFound)
 		return
 	}
@@ -136,14 +169,14 @@ func (h *CustomerHandler) Update (w http.ResponseWriter, r *http.Request) {
 }
 
 // Удаление клиента по ID
-func (h *CustomerHandler) Delete(w http.ResponseWriter, r *http.Request){
+func (h *CustomerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	str_id := mux.Vars(r)["id"]
 	id, err := strconv.Atoi(str_id)
 	if err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	
+
 	query := `DELETE FROM customers WHERE id = ?`
 	result, err := h.DB.Exec(query, id)
 	if err != nil {
